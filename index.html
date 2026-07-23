@@ -1,0 +1,2233 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>五子棋 · 阴间防守反击版</title>
+    <style>
+        /* ===== 完整样式（与上一轮完全一致） ===== */
+        * {
+            box-sizing: border-box;
+            user-select: none;
+            -webkit-tap-highlight-color: transparent;
+        }
+        body {
+            margin: 0;
+            background: #0a0a0f;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            font-family: 'Segoe UI', system-ui, sans-serif;
+            padding: 10px;
+            overflow: hidden;
+        }
+        .loading-screen {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: #0a0a0f;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            z-index: 9999;
+            transition: opacity 0.8s ease;
+        }
+        .loading-screen.hidden {
+            opacity: 0;
+            pointer-events: none;
+        }
+        .loading-title {
+            font-size: 42px;
+            font-weight: 300;
+            color: #00d4ff;
+            letter-spacing: 12px;
+            text-shadow: 0 0 40px rgba(0, 212, 255, 0.3);
+        }
+        .loading-sub {
+            color: #4a6a8a;
+            font-size: 14px;
+            letter-spacing: 6px;
+            margin-top: 10px;
+            opacity: 0.7;
+        }
+        .loading-bar {
+            margin-top: 30px;
+            width: 200px;
+            height: 2px;
+            background: rgba(0, 212, 255, 0.1);
+            border-radius: 2px;
+            overflow: hidden;
+        }
+        .loading-bar-fill {
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, #00d4ff, #0070ff);
+            animation: loadBar 2s ease-in-out forwards;
+        }
+        @keyframes loadBar {
+            0% {
+                width: 0%;
+            }
+            100% {
+                width: 100%;
+            }
+        }
+        .container {
+            background: #8b6b40;
+            padding: 16px;
+            border-radius: 40px;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.8);
+            max-width: 500px;
+            width: 100%;
+            border: 2px solid #5a3d28;
+            display: none;
+        }
+        .title {
+            text-align: center;
+            font-size: 22px;
+            font-weight: bold;
+            color: #f5d78e;
+            margin-bottom: 8px;
+            letter-spacing: 2px;
+        }
+        .title .badge {
+            font-size: 11px;
+            background: #4a3222;
+            padding: 2px 10px;
+            border-radius: 12px;
+            color: #5f8;
+        }
+        .title .hell-badge {
+            font-size: 10px;
+            background: #ff4444;
+            padding: 2px 8px;
+            border-radius: 12px;
+            color: #fff;
+            margin-left: 4px;
+            animation: pulse 0.8s infinite;
+        }
+        @keyframes pulse {
+            0%,
+            100% {
+                opacity: 1;
+            }
+            50% {
+                opacity: 0.4;
+            }
+        }
+        .board-wrapper {
+            background: #5a3d28;
+            border-radius: 20px;
+            padding: 10px;
+            box-shadow: inset 0 -4px 0 #3d2a1a;
+            position: relative;
+        }
+        canvas {
+            display: block;
+            width: 100%;
+            aspect-ratio: 1/1;
+            background: #d4a574;
+            border-radius: 12px;
+            cursor: pointer;
+            touch-action: none;
+        }
+        .winner-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            display: none;
+            justify-content: center;
+            align-items: center;
+            background: rgba(0, 0, 0, 0.35);
+            border-radius: 12px;
+            z-index: 10;
+        }
+        .winner-overlay.show {
+            display: flex;
+            pointer-events: auto;
+        }
+        .winner-text {
+            font-size: 42px;
+            font-weight: bold;
+            color: #ffd700;
+            text-shadow: 0 0 30px rgba(255, 215, 0, 0.5);
+            animation: winPulse 0.5s ease;
+        }
+        @keyframes winPulse {
+            0% {
+                transform: scale(0.5);
+                opacity: 0;
+            }
+            50% {
+                transform: scale(1.2);
+            }
+            100% {
+                transform: scale(1);
+                opacity: 1;
+            }
+        }
+        .controls {
+            display: flex;
+            gap: 8px;
+            margin-top: 10px;
+            flex-wrap: wrap;
+        }
+        .btn {
+            flex: 1;
+            padding: 10px;
+            border: none;
+            border-radius: 30px;
+            font-size: 14px;
+            font-weight: bold;
+            background: #b58b5a;
+            color: #2d1a0e;
+            cursor: pointer;
+            box-shadow: 0 3px 0 #5a3d28;
+            transition: all 0.15s;
+            min-width: 60px;
+        }
+        .btn:active {
+            transform: translateY(3px);
+            box-shadow: 0 0 0 #5a3d28;
+        }
+        .btn:disabled {
+            opacity: 0.4;
+            transform: translateY(2px);
+            box-shadow: 0 1px 0 #5a3d28;
+            cursor: not-allowed;
+        }
+        .btn-exit {
+            background: #f87171;
+            box-shadow: 0 3px 0 #ef4444;
+            color: #fff;
+            flex: 0.5;
+            display: none;
+        }
+        .btn-undo {
+            flex: 1;
+            background: #b58b5a;
+            box-shadow: 0 3px 0 #5a3d28;
+        }
+        .status {
+            text-align: center;
+            padding: 10px;
+            margin-top: 10px;
+            font-size: 15px;
+            font-weight: bold;
+            color: #f5d78e;
+            background: #4a3222cc;
+            border-radius: 30px;
+            min-height: 44px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            flex-wrap: wrap;
+        }
+        .status .dot {
+            display: inline-block;
+            width: 18px;
+            height: 18px;
+            border-radius: 50%;
+            flex-shrink: 0;
+        }
+        .status .dot.black {
+            background: radial-gradient(circle at 35% 35%, #555, #111);
+            border: 1px solid #888;
+        }
+        .status .dot.white {
+            background: radial-gradient(circle at 35% 35%, #fff, #ccc);
+            border: 1px solid #ddd;
+        }
+        .self-status-bar {
+            background: #2d1a0e88;
+            border-radius: 20px;
+            padding: 8px 12px;
+            margin-top: 8px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 4px;
+            font-size: 11px;
+            color: #d4a373;
+            border: 1px solid #5a3d2844;
+        }
+        .self-status-bar .label {
+            color: #d4a373;
+        }
+        .self-status-bar .value {
+            color: #f5d78e;
+            font-weight: bold;
+        }
+        .self-status-bar .running {
+            color: #4ade80;
+        }
+        .menu-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(10, 10, 15, 0.92);
+            backdrop-filter: blur(20px);
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            z-index: 100;
+            padding: 20px;
+            animation: menuFadeIn 0.6s ease;
+        }
+        @keyframes menuFadeIn {
+            from {
+                opacity: 0;
+                transform: scale(0.9);
+            }
+            to {
+                opacity: 1;
+                transform: scale(1);
+            }
+        }
+        .menu-overlay.hidden {
+            display: none;
+        }
+        .menu-title {
+            font-size: 28px;
+            font-weight: 300;
+            color: #f5d78e;
+            letter-spacing: 6px;
+            margin-bottom: 4px;
+        }
+        .menu-sub {
+            color: #d4a373;
+            font-size: 14px;
+            margin-bottom: 10px;
+            min-height: 28px;
+            transition: all 0.3s;
+        }
+        .menu-sub.rand-mode {
+            color: #5f8;
+            font-weight: bold;
+        }
+        .menu-sub.rand-mode-off {
+            color: #d4a373;
+        }
+        .menu-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 8px;
+            max-width: 400px;
+            width: 100%;
+        }
+        .menu-btn {
+            padding: 14px 4px;
+            border: 2px solid transparent;
+            border-radius: 14px;
+            background: #6b4c32;
+            color: #d4a373;
+            font-size: 13px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.3s;
+            text-align: center;
+        }
+        .menu-btn .sub-text {
+            display: block;
+            font-size: 9px;
+            opacity: 0.6;
+            margin-top: 2px;
+        }
+        .menu-btn:active {
+            transform: scale(0.9);
+        }
+        .menu-btn.selected {
+            border-color: #00d4ff;
+            background: #8b6b40;
+            color: #f5d78e;
+            transform: scale(1.05);
+        }
+        .menu-btn.hell-selected {
+            border-color: #ff4444;
+            background: #8b2a2a;
+            color: #ff6b6b;
+            transform: scale(1.05);
+            box-shadow: 0 0 30px rgba(255, 68, 68, 0.3);
+        }
+        .start-btn {
+            margin-top: 12px;
+            padding: 12px 40px;
+            border: none;
+            border-radius: 30px;
+            background: #00d4ff;
+            color: #0a0a0f;
+            font-size: 16px;
+            font-weight: bold;
+            cursor: pointer;
+            box-shadow: 0 4px 0 #0070ff;
+            transition: all 0.15s;
+        }
+        .start-btn:active {
+            transform: translateY(4px) scale(0.97);
+            box-shadow: 0 0 0 #0070ff;
+        }
+        .start-btn.hell-start {
+            background: #ff4444;
+            box-shadow: 0 4px 0 #cc0000;
+        }
+        .start-btn.rand-mode-btn {
+            background: #8b5cf6;
+            box-shadow: 0 4px 0 #6d3cf0;
+            animation: glowPulse 0.8s infinite alternate;
+        }
+        @keyframes glowPulse {
+            0% {
+                box-shadow: 0 4px 0 #6d3cf0, 0 0 10px rgba(139, 92, 246, 0.3);
+            }
+            100% {
+                box-shadow: 0 4px 0 #6d3cf0, 0 0 30px rgba(139, 92, 246, 0.7);
+            }
+        }
+        .watch-btn {
+            margin-top: 8px;
+            padding: 10px 30px;
+            border: none;
+            border-radius: 30px;
+            background: #8b5cf6;
+            color: #fff;
+            font-size: 14px;
+            font-weight: bold;
+            cursor: pointer;
+            box-shadow: 0 4px 0 #7c3aed;
+            transition: all 0.15s;
+        }
+        .watch-btn:active {
+            transform: translateY(4px);
+            box-shadow: 0 0 0 #7c3aed;
+        }
+        .color-select {
+            margin-top: 8px;
+            display: flex;
+            gap: 16px;
+            color: #d4a373;
+            font-size: 13px;
+            align-items: center;
+            flex-wrap: wrap;
+            justify-content: center;
+        }
+        .color-select label {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+            cursor: pointer;
+        }
+        .color-select input[type="radio"] {
+            accent-color: #00d4ff;
+        }
+        .color-select .random-btn {
+            background: #8b5cf6;
+            color: #fff;
+            border: none;
+            border-radius: 20px;
+            padding: 4px 16px;
+            font-size: 13px;
+            font-weight: bold;
+            cursor: pointer;
+            box-shadow: 0 2px 0 #6d3cf0;
+            transition: all 0.15s;
+            position: relative;
+            min-width: 70px;
+        }
+        .color-select .random-btn:active {
+            transform: translateY(2px);
+            box-shadow: 0 0 0 #6d3cf0;
+        }
+        .color-select .random-btn .rand-dots {
+            display: inline-block;
+            min-width: 20px;
+            text-align: center;
+        }
+        .color-select .random-btn.active-mode {
+            background: #ff6b6b;
+            box-shadow: 0 2px 0 #cc0000;
+        }
+        .self-status {
+            margin-top: 6px;
+            color: #d4a373;
+            font-size: 11px;
+        }
+        .self-status .running {
+            color: #5f8;
+        }
+        #saveStatus {
+            text-align: center;
+            font-size: 12px;
+            color: #d4a373;
+            margin-top: 4px;
+        }
+        #saveStatus .ok {
+            color: #5f8;
+        }
+        #saveStatus .fail {
+            color: #f66;
+        }
+        /* 随机按钮动画 */
+        .random-btn.spinning {
+            animation: spinGlow 0.08s infinite alternate;
+        }
+        @keyframes spinGlow {
+            0% {
+                box-shadow: 0 0 5px rgba(139, 92, 246, 0.5);
+            }
+            100% {
+                box-shadow: 0 0 25px rgba(139, 92, 246, 0.9);
+            }
+        }
+    </style>
+</head>
+<body>
+
+    <div class="loading-screen" id="loadingScreen">
+        <div class="loading-title">⚫ 五子棋</div>
+        <div class="loading-sub">✦ 阴间防守反击 ✦</div>
+        <div class="loading-bar"><div class="loading-bar-fill"></div></div>
+    </div>
+
+    <!-- 主菜单 -->
+    <div class="menu-overlay" id="menuOverlay">
+        <div class="menu-title">⚫ 五子棋 ⚪</div>
+        <div class="menu-sub" id="menuSub">选择难度 · AI已就绪</div>
+        <div class="menu-grid" id="menuGrid">
+            <button class="menu-btn" data-level="0">🌱 新手<span class="sub-text">深度1</span></button>
+            <button class="menu-btn selected" data-level="1">📖 普通<span class="sub-text">深度2</span></button>
+            <button class="menu-btn" data-level="2">⚔️ 困难<span class="sub-text">深度3</span></button>
+            <button class="menu-btn" data-level="3">🔥 地狱<span class="sub-text">深度4</span></button>
+        </div>
+        <div class="color-select">
+            <label><input type="radio" name="color" value="1" checked> ⚫ 黑棋先手</label>
+            <label><input type="radio" name="color" value="2"> ⚪ 白棋后手</label>
+            <button class="random-btn" id="randomColorBtn">🎲 <span class="rand-dots" id="randDots"></span></button>
+        </div>
+        <button class="start-btn" id="startBtn">🚀 开始对局</button>
+        <button class="watch-btn" id="watchBtn">👁️ 观看AI对战</button>
+        <div class="self-status" id="selfStatus">
+            🧠 自我博弈: <span id="selfStatusText">0局</span>
+        </div>
+    </div>
+
+    <!-- 游戏界面 -->
+    <div class="container" id="gameContainer">
+        <div class="title">⚫ 五子棋 ⚪ <span class="badge" id="difficultyBadge">🧠 普通</span><span class="hell-badge" id="hellBadge" style="display:none;">🔥 地狱</span></div>
+        <div class="board-wrapper">
+            <canvas id="canvas"></canvas>
+            <div class="winner-overlay" id="winnerOverlay">
+                <div class="winner-text" id="winnerText">🎉 你赢了！</div>
+            </div>
+        </div>
+        <div class="controls">
+            <button class="btn btn-undo" id="undoBtn" disabled>↩ 悔棋 <span id="undoCount">(3次)</span></button>
+            <button class="btn btn-exit" id="exitWatchBtn">✕ 退出观看</button>
+        </div>
+        <div class="status" id="status"><span class="dot black"></span> 等待开始...</div>
+        <div class="self-status-bar" id="selfStatusBar">
+            <span>🧠 <span class="label">对局:</span> <span class="value" id="spGames">0</span></span>
+            <span>⚫ <span class="label">黑胜:</span> <span class="value" id="spBlack">0</span></span>
+            <span>⚪ <span class="label">白胜:</span> <span class="value" id="spWhite">0</span></span>
+            <span>🤝 <span class="label">平局:</span> <span class="value" id="spDraw">0</span></span>
+            <span id="spStatusText" class="running">▶ 运行中</span>
+        </div>
+        <div id="saveStatus">💾 引擎: <span id="engineStatus" class="ok">✅ 阴间防守反击版</span></div>
+    </div>
+
+    <script>
+        // ============================================================
+        // 1. 音效
+        // ============================================================
+        let audioCtx = null;
+
+        function playDing(freq = 880, vol = 0.2) {
+            try {
+                if (!audioCtx) audioCtx = new(window.AudioContext || window.webkitAudioContext)();
+                const o = audioCtx.createOscillator(),
+                    g = audioCtx.createGain();
+                o.type = 'sine';
+                o.frequency.value = freq;
+                g.gain.value = vol;
+                g.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.08);
+                o.connect(g);
+                g.connect(audioCtx.destination);
+                o.start();
+                o.stop(audioCtx.currentTime + 0.08);
+            } catch (e) {}
+        }
+
+        function playPlace() {
+            try {
+                if (!audioCtx) audioCtx = new(window.AudioContext || window.webkitAudioContext)();
+                const osc = audioCtx.createOscillator();
+                const gain = audioCtx.createGain();
+                osc.type = 'sine';
+                osc.frequency.setValueAtTime(150, audioCtx.currentTime);
+                osc.frequency.exponentialRampToValueAtTime(80, audioCtx.currentTime + 0.1);
+                gain.gain.setValueAtTime(0.5, audioCtx.currentTime);
+                gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.12);
+                osc.connect(gain);
+                gain.connect(audioCtx.destination);
+                osc.start();
+                osc.stop(audioCtx.currentTime + 0.12);
+                const osc2 = audioCtx.createOscillator();
+                const gain2 = audioCtx.createGain();
+                osc2.type = 'sine';
+                osc2.frequency.setValueAtTime(600, audioCtx.currentTime + 0.02);
+                gain2.gain.setValueAtTime(0.15, audioCtx.currentTime + 0.02);
+                gain2.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.1);
+                osc2.connect(gain2);
+                gain2.connect(audioCtx.destination);
+                osc2.start(audioCtx.currentTime + 0.02);
+                osc2.stop(audioCtx.currentTime + 0.1);
+            } catch (e) {}
+        }
+
+        function playWin() {
+            try {
+                if (!audioCtx) audioCtx = new(window.AudioContext || window.webkitAudioContext)();
+                const notes = [523, 659, 784, 1047];
+                notes.forEach((freq, i) => {
+                    const osc = audioCtx.createOscillator();
+                    const gain = audioCtx.createGain();
+                    osc.type = 'sine';
+                    osc.frequency.value = freq;
+                    const start = audioCtx.currentTime + i * 0.12;
+                    gain.gain.setValueAtTime(0.25, start);
+                    gain.gain.exponentialRampToValueAtTime(0.001, start + 0.15);
+                    osc.connect(gain);
+                    gain.connect(audioCtx.destination);
+                    osc.start(start);
+                    osc.stop(start + 0.15);
+                });
+            } catch (e) {}
+        }
+
+        function playTick() {
+            try {
+                if (!audioCtx) audioCtx = new(window.AudioContext || window.webkitAudioContext)();
+                const osc = audioCtx.createOscillator();
+                const gain = audioCtx.createGain();
+                osc.type = 'sine';
+                osc.frequency.value = 440 + Math.random() * 200;
+                gain.gain.setValueAtTime(0.08, audioCtx.currentTime);
+                gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.04);
+                osc.connect(gain);
+                gain.connect(audioCtx.destination);
+                osc.start();
+                osc.stop(audioCtx.currentTime + 0.04);
+            } catch (e) {}
+        }
+
+        // ============================================================
+        // 2. AI 核心（阴间防守反击）
+        // ============================================================
+        class SelfLearningAI {
+            constructor(difficulty = 3) {
+                this.difficulty = difficulty;
+                this.size = 15;
+                this.dirs = [
+                    [1, 0],
+                    [0, 1],
+                    [1, 1],
+                    [1, -1]
+                ];
+                this.bestMove = null;
+                this.progress = 0;
+                this.totalCandidates = 0;
+                this.maxDepth = { 0: 1, 1: 2, 2: 3, 3: 4 } [difficulty] || 2;
+                this.widthLimit = { 0: 6, 1: 8, 2: 12, 3: 16 } [difficulty] || 8;
+                this.rootCandidates = { 0: 8, 1: 12, 2: 18, 3: 24 } [difficulty] || 12;
+                this.BLOCK_FOUR_WEIGHT = 2.5;
+                this.BLOCK_LIVE3_WEIGHT = 2.0;
+                this.ATTACK_WEIGHT = 0.25;
+                this.DEFENSE_WEIGHT = 0.75;
+            }
+
+            evaluatePointDetail(board, row, col, player) {
+                const details = [];
+                let totalScore = 0;
+                let live3Count = 0,
+                    fourCount = 0;
+                for (let [dx, dy] of this.dirs) {
+                    let cnt = 1;
+                    let openLeft = 0,
+                        openRight = 0;
+                    let blockLeft = 0,
+                        blockRight = 0;
+                    let seq = [];
+                    for (let step = 1; step < 5; step++) {
+                        let nr = row + dx * step,
+                            nc = col + dy * step;
+                        if (nr < 0 || nr >= 15 || nc < 0 || nc >= 15) { blockRight = 1; break; }
+                        if (board[nr][nc] === player) { cnt++;
+                            seq.push(1); } else if (board[nr][nc] === 0) { seq.push(0);
+                            openRight++; if (openRight >= 2) break; } else { seq.push(-1);
+                            blockRight = 1; break; }
+                    }
+                    let seqNeg = [];
+                    for (let step = 1; step < 5; step++) {
+                        let nr = row - dx * step,
+                            nc = col - dy * step;
+                        if (nr < 0 || nr >= 15 || nc < 0 || nc >= 15) { blockLeft = 1; break; }
+                        if (board[nr][nc] === player) { cnt++;
+                            seqNeg.push(1); } else if (board[nr][nc] === 0) { seqNeg.push(0);
+                            openLeft++; if (openLeft >= 2) break; } else { seqNeg.push(-1);
+                            blockLeft = 1; break; }
+                    }
+                    let fullSeq = seqNeg.reverse().concat([1]).concat(seq);
+                    let isJumpLive3 = false;
+                    if (cnt === 3) {
+                        for (let i = 0; i < fullSeq.length - 3; i++) {
+                            if (fullSeq[i] === 1 && fullSeq[i + 1] === 0 && fullSeq[i + 2] === 1 && fullSeq[i + 3] === 1)
+                                isJumpLive3 = true;
+                            if (fullSeq[i] === 1 && fullSeq[i + 1] === 1 && fullSeq[i + 2] === 0 && fullSeq[i + 3] === 1)
+                                isJumpLive3 = true;
+                        }
+                        for (let i = 0; i < fullSeq.length - 4; i++) {
+                            if (fullSeq[i] === 1 && fullSeq[i + 1] === 0 && fullSeq[i + 2] === 1 && fullSeq[i + 3] === 0 &&
+                                fullSeq[i + 4] === 1) isJumpLive3 = true;
+                        }
+                    }
+                    let score = 0;
+                    if (cnt >= 5) {
+                        score = 10000000;
+                    } else if (cnt === 4) {
+                        if (!blockLeft && !blockRight && openLeft > 0 && openRight > 0) {
+                            score = 8000000;
+                        } else if ((!blockLeft && openLeft > 0) || (!blockRight && openRight > 0)) {
+                            score = 3000000;
+                        } else {
+                            score = 1500000;
+                        }
+                    } else if (cnt === 3) {
+                        if (!blockLeft && !blockRight && openLeft > 0 && openRight > 0) {
+                            score = 2000000;
+                        } else if ((!blockLeft && openLeft > 0) || (!blockRight && openRight > 0)) {
+                            score = 800000;
+                        } else {
+                            score = 300000;
+                        }
+                    } else if (cnt === 2) {
+                        if (!blockLeft && !blockRight && openLeft > 0 && openRight > 0) {
+                            score = 50000;
+                        } else if ((!blockLeft && openLeft > 0) || (!blockRight && openRight > 0)) {
+                            score = 10000;
+                        } else {
+                            score = 2000;
+                        }
+                    } else {
+                        score = 100;
+                    }
+                    totalScore += score;
+                    details.push({ dx, dy, cnt, openLeft, openRight, blockLeft, blockRight, score, isJumpLive3 });
+                    if (score >= 2000000 && score < 3000000) live3Count++;
+                    if (score >= 3000000 && score < 8000000) fourCount++;
+                }
+                let comboBonus = 0;
+                if (live3Count >= 2) {
+                    comboBonus = 2200000;
+                }
+                if (live3Count >= 1 && fourCount >= 1) {
+                    comboBonus = Math.max(comboBonus, 1200000);
+                }
+                totalScore += comboBonus;
+                return { totalScore, details };
+            }
+
+            evaluatePoint(board, row, col, player) {
+                return this.evaluatePointDetail(board, row, col, player).totalScore;
+            }
+
+            getCandidates(board) {
+                const set = new Set();
+                for (let r = 0; r < 15; r++) {
+                    for (let c = 0; c < 15; c++) {
+                        if (board[r][c] !== 0) {
+                            for (let dr = -2; dr <= 2; dr++) {
+                                for (let dc = -2; dc <= 2; dc++) {
+                                    let nr = r + dr,
+                                        nc = c + dc;
+                                    if (nr >= 0 && nr < 15 && nc >= 0 && nc < 15 && board[nr][nc] === 0) {
+                                        set.add(nr * 15 + nc);
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+                return Array.from(set).map(v => [Math.floor(v / 15), v % 15]);
+            }
+
+            checkWin(board, row, col, player) {
+                if (board[row][col] !== player) return false;
+                for (let [dx, dy] of this.dirs) {
+                    let cnt = 1;
+                    for (let step = 1; step < 5; step++) {
+                        let nr = row + dx * step,
+                            nc = col + dy * step;
+                        if (nr >= 0 && nr < 15 && nc >= 0 && nc < 15 && board[nr][nc] === player) cnt++;
+                        else break;
+                    }
+                    for (let step = 1; step < 5; step++) {
+                        let nr = row - dx * step,
+                            nc = col - dy * step;
+                        if (nr >= 0 && nr < 15 && nc >= 0 && nc < 15 && board[nr][nc] === player) cnt++;
+                        else break;
+                    }
+                    if (cnt >= 5) return true;
+                }
+                return false;
+            }
+
+            dfs(board, depth, alpha, beta, isMaximizing, aiPlayer, opponent) {
+                if (depth === 0) {
+                    let score = 0;
+                    for (let r = 0; r < 15; r++) {
+                        for (let c = 0; c < 15; c++) {
+                            if (board[r][c] === aiPlayer) {
+                                score += this.evaluatePoint(board, r, c, aiPlayer) * this.ATTACK_WEIGHT;
+                            } else if (board[r][c] === opponent) {
+                                score -= this.evaluatePoint(board, r, c, opponent) * this.DEFENSE_WEIGHT;
+                            }
+                        }
+                    }
+                    return score;
+                }
+                let empty = this.getCandidates(board);
+                if (empty.length === 0) return 0;
+                let currentPlayer = isMaximizing ? aiPlayer : opponent;
+                let moves = [];
+                for (let [r, c] of empty) {
+                    let atk = this.evaluatePoint(board, r, c, currentPlayer);
+                    let dfn = this.evaluatePoint(board, r, c, 3 - currentPlayer);
+                    let detail = this.evaluatePointDetail(board, r, c, currentPlayer);
+                    let live3Count = 0,
+                        fourCount = 0;
+                    for (let d of detail.details) {
+                        if (d.score >= 2000000 && d.score < 3000000) live3Count++;
+                        else if (d.score >= 3000000 && d.score < 8000000) fourCount++;
+                    }
+                    let comboScore = 0;
+                    if (live3Count >= 2) comboScore = 2200000;
+                    if (live3Count >= 1 && fourCount >= 1) comboScore = Math.max(comboScore, 1200000);
+                    let score = atk * this.ATTACK_WEIGHT + dfn * this.DEFENSE_WEIGHT + comboScore;
+                    if (dfn >= 3000000 && dfn < 8000000) score += 100000;
+                    if (dfn >= 8000000) score += 200000;
+                    moves.push([
+                        [r, c], score
+                    ]);
+                }
+                moves.sort((a, b) => b[1] - a[1]);
+                moves = moves.slice(0, this.widthLimit);
+                if (isMaximizing) {
+                    let maxEval = -Infinity;
+                    for (let [
+                            [r, c], _
+                        ] of moves) {
+                        board[r][c] = currentPlayer;
+                        if (this.checkWin(board, r, c, currentPlayer)) {
+                            board[r][c] = 0;
+                            return 10000000 + depth;
+                        }
+                        let evalVal = this.dfs(board, depth - 1, alpha, beta, false, aiPlayer, opponent);
+                        board[r][c] = 0;
+                        maxEval = Math.max(maxEval, evalVal);
+                        alpha = Math.max(alpha, evalVal);
+                        if (beta <= alpha) break;
+                    }
+                    return maxEval;
+                } else {
+                    let minEval = Infinity;
+                    for (let [
+                            [r, c], _
+                        ] of moves) {
+                        board[r][c] = currentPlayer;
+                        if (this.checkWin(board, r, c, currentPlayer)) {
+                            board[r][c] = 0;
+                            return -10000000 - depth;
+                        }
+                        let evalVal = this.dfs(board, depth - 1, alpha, beta, true, aiPlayer, opponent);
+                        board[r][c] = 0;
+                        minEval = Math.min(minEval, evalVal);
+                        beta = Math.min(beta, evalVal);
+                        if (beta <= alpha) break;
+                    }
+                    return minEval;
+                }
+            }
+
+            blackWinningOpening(board, blackCount) {
+                if (blackCount === 0) {
+                    if (board[7][7] === 0) return [7, 7];
+                    for (let [r, c] of [
+                            [7, 8],
+                            [8, 7],
+                            [6, 7],
+                            [7, 6],
+                            [8, 8],
+                            [6, 6],
+                            [8, 6],
+                            [6, 8]
+                        ]) {
+                        if (board[r][c] === 0) return [r, c];
+                    }
+                    return [7, 7];
+                }
+                if (blackCount === 1) {
+                    const positions = [
+                        [8, 8],
+                        [6, 8],
+                        [8, 6],
+                        [6, 6],
+                        [7, 8],
+                        [8, 7],
+                        [6, 7],
+                        [7, 6],
+                        [9, 9],
+                        [5, 9],
+                        [9, 5],
+                        [5, 5]
+                    ];
+                    for (let [r, c] of positions) {
+                        if (r >= 0 && r < 15 && c >= 0 && c < 15 && board[r][c] === 0) return [r, c];
+                    }
+                    for (let r = 5; r < 10; r++)
+                        for (let c = 5; c < 10; c++) {
+                            if (board[r][c] === 0) return [r, c];
+                        }
+                    return [7, 7];
+                }
+                if (blackCount === 2) {
+                    let blackPos = [];
+                    for (let r = 0; r < 15; r++)
+                        for (let c = 0; c < 15; c++)
+                            if (board[r][c] === 1) blackPos.push([r, c]);
+                    if (blackPos.some(p => p[0] === 7 && p[1] === 7) && blackPos.some(p => p[0] === 8 && p[1] === 8)) {
+                        for (let [r, c] of [
+                                [9, 9],
+                                [9, 7],
+                                [7, 9],
+                                [6, 8],
+                                [8, 6],
+                                [9, 8],
+                                [8, 9]
+                            ]) {
+                            if (r >= 0 && r < 15 && c >= 0 && c < 15 && board[r][c] === 0) return [r, c];
+                        }
+                    }
+                    if (blackPos.some(p => p[0] === 7 && p[1] === 7) && blackPos.some(p => p[0] === 6 && p[1] === 8)) {
+                        for (let [r, c] of [
+                                [5, 9],
+                                [7, 9],
+                                [5, 7],
+                                [8, 7],
+                                [6, 9],
+                                [7, 8]
+                            ]) {
+                            if (r >= 0 && r < 15 && c >= 0 && c < 15 && board[r][c] === 0) return [r, c];
+                        }
+                    }
+                    if (blackPos.some(p => p[0] === 7 && p[1] === 7) && blackPos.some(p => p[0] === 8 && p[1] === 6)) {
+                        for (let [r, c] of [
+                                [9, 5],
+                                [9, 7],
+                                [7, 5],
+                                [7, 9],
+                                [8, 5],
+                                [9, 6]
+                            ]) {
+                            if (r >= 0 && r < 15 && c >= 0 && c < 15 && board[r][c] === 0) return [r, c];
+                        }
+                    }
+                    for (let r = 5; r < 10; r++)
+                        for (let c = 5; c < 10; c++) {
+                            if (board[r][c] === 0 && Math.abs(r - 7) <= 2 && Math.abs(c - 7) <= 2) return [r, c];
+                        }
+                    for (let r = 4; r < 11; r++)
+                        for (let c = 4; c < 11; c++) {
+                            if (board[r][c] === 0) return [r, c];
+                        }
+                    return [7, 7];
+                }
+                return null;
+            }
+
+            findOpponentLiveThreeEndpoints(board, opponent) {
+                const endpoints = new Set();
+                for (let r = 0; r < 15; r++) {
+                    for (let c = 0; c < 15; c++) {
+                        if (board[r][c] !== opponent) continue;
+                        for (let [dx, dy] of this.dirs) {
+                            let cnt = 1;
+                            let leftOpen = 0,
+                                rightOpen = 0;
+                            let leftBlock = 0,
+                                rightBlock = 0;
+                            for (let step = 1; step < 5; step++) {
+                                let nr = r + dx * step,
+                                    nc = c + dy * step;
+                                if (nr < 0 || nr >= 15 || nc < 0 || nc >= 15) { rightBlock = 1; break; }
+                                if (board[nr][nc] === opponent) cnt++;
+                                else if (board[nr][nc] === 0) { rightOpen++; if (rightOpen >= 2) break; } else { rightBlock =
+                                    1; break; }
+                            }
+                            for (let step = 1; step < 5; step++) {
+                                let nr = r - dx * step,
+                                    nc = c - dy * step;
+                                if (nr < 0 || nr >= 15 || nc < 0 || nc >= 15) { leftBlock = 1; break; }
+                                if (board[nr][nc] === opponent) cnt++;
+                                else if (board[nr][nc] === 0) { leftOpen++; if (leftOpen >= 2) break; } else { leftBlock =
+                                    1; break; }
+                            }
+                            if (cnt === 3 && !leftBlock && !rightBlock && leftOpen > 0 && rightOpen > 0) {
+                                let leftPos = null,
+                                    rightPos = null;
+                                for (let step = 1; step <= 3; step++) {
+                                    let nr = r - dx * step,
+                                        nc = c - dy * step;
+                                    if (nr < 0 || nr >= 15 || nc < 0 || nc >= 15) break;
+                                    if (board[nr][nc] === 0) { leftPos = [nr, nc]; break; }
+                                }
+                                for (let step = 1; step <= 3; step++) {
+                                    let nr = r + dx * step,
+                                        nc = c + dy * step;
+                                    if (nr < 0 || nr >= 15 || nc < 0 || nc >= 15) break;
+                                    if (board[nr][nc] === 0) { rightPos = [nr, nc]; break; }
+                                }
+                                if (leftPos) endpoints.add(leftPos[0] * 15 + leftPos[1]);
+                                if (rightPos) endpoints.add(rightPos[0] * 15 + rightPos[1]);
+                            }
+                        }
+                    }
+                }
+                return endpoints;
+            }
+
+            findOpponentFourThreats(board, opponent) {
+                const endpoints = new Set();
+                for (let r = 0; r < 15; r++) {
+                    for (let c = 0; c < 15; c++) {
+                        if (board[r][c] !== opponent) continue;
+                        for (let [dx, dy] of this.dirs) {
+                            let cnt = 1;
+                            let leftOpen = 0,
+                                rightOpen = 0;
+                            let leftBlock = 0,
+                                rightBlock = 0;
+                            for (let step = 1; step < 5; step++) {
+                                let nr = r + dx * step,
+                                    nc = c + dy * step;
+                                if (nr < 0 || nr >= 15 || nc < 0 || nc >= 15) { rightBlock = 1; break; }
+                                if (board[nr][nc] === opponent) cnt++;
+                                else if (board[nr][nc] === 0) { rightOpen++; if (rightOpen >= 2) break; } else { rightBlock =
+                                    1; break; }
+                            }
+                            for (let step = 1; step < 5; step++) {
+                                let nr = r - dx * step,
+                                    nc = c - dy * step;
+                                if (nr < 0 || nr >= 15 || nc < 0 || nc >= 15) { leftBlock = 1; break; }
+                                if (board[nr][nc] === opponent) cnt++;
+                                else if (board[nr][nc] === 0) { leftOpen++; if (leftOpen >= 2) break; } else { leftBlock =
+                                    1; break; }
+                            }
+                            if (cnt === 4 && (!leftBlock || !rightBlock) && (leftOpen > 0 || rightOpen > 0)) {
+                                if (!leftBlock && leftOpen > 0) {
+                                    for (let step = 1; step <= 3; step++) {
+                                        let nr = r - dx * step,
+                                            nc = c - dy * step;
+                                        if (nr < 0 || nr >= 15 || nc < 0 || nc >= 15) break;
+                                        if (board[nr][nc] === 0) {
+                                            endpoints.add(nr * 15 + nc);
+                                            break;
+                                        }
+                                    }
+                                }
+                                if (!rightBlock && rightOpen > 0) {
+                                    for (let step = 1; step <= 3; step++) {
+                                        let nr = r + dx * step,
+                                            nc = c + dy * step;
+                                        if (nr < 0 || nr >= 15 || nc < 0 || nc >= 15) break;
+                                        if (board[nr][nc] === 0) {
+                                            endpoints.add(nr * 15 + nc);
+                                            break;
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+                return endpoints;
+            }
+
+            // ---------- 主入口 getMove（防守反击，阴间走位） ----------
+            getMove(board, history = []) {
+                try {
+                    let empty = this.getCandidates(board);
+                    if (board.flat().every(v => v === 0)) {
+                        this.bestMove = [7, 7];
+                        return [7, 7];
+                    }
+
+                    let blackCount = history.filter(m => m.player === 1).length;
+                    let whiteCount = history.length - blackCount;
+
+                    // 黑棋开局
+                    if (blackCount < 3 && blackCount <= whiteCount) {
+                        let opening = this.blackWinningOpening(board, blackCount);
+                        if (opening && board[opening[0]] && board[opening[0]][opening[1]] === 0) {
+                            this.bestMove = opening;
+                            return opening;
+                        }
+                    }
+
+                    let aiPlayer = blackCount <= whiteCount ? 1 : 2;
+                    let opponent = 3 - aiPlayer;
+
+                    let searchSpace = empty.length > 0 ? empty : [];
+                    if (searchSpace.length === 0) {
+                        for (let r = 0; r < 15; r++)
+                            for (let c = 0; c < 15; c++) {
+                                if (board[r][c] === 0) searchSpace.push([r, c]);
+                            }
+                    }
+
+                    // ★★★ 1. 自己连五（最高优先） ★★★
+                    for (let [r, c] of searchSpace) {
+                        board[r][c] = aiPlayer;
+                        if (this.checkWin(board, r, c, aiPlayer)) {
+                            board[r][c] = 0;
+                            this.bestMove = [r, c];
+                            return [r, c];
+                        }
+                        board[r][c] = 0;
+                    }
+
+                    // ★★★ 2. 对手四子威胁（活四或冲四）强制防守 ★★★
+                    const fourThreats = this.findOpponentFourThreats(board, opponent);
+                    if (fourThreats.size > 0) {
+                        let bestScore = -Infinity;
+                        let bestMove = null;
+                        for (let key of fourThreats) {
+                            let r = Math.floor(key / 15),
+                                c = key % 15;
+                            if (board[r][c] !== 0) continue;
+                            let atk = this.evaluatePoint(board, r, c, aiPlayer);
+                            let dfn = this.evaluatePoint(board, r, c, opponent);
+                            let score = atk * 0.3 + dfn * this.BLOCK_FOUR_WEIGHT;
+                            // 额外奖励：如果能同时形成活三或冲四，则加高分
+                            let tempBoard = board.map(row => [...row]);
+                            tempBoard[r][c] = aiPlayer;
+                            let selfDetail = this.evaluatePointDetail(tempBoard, r, c, aiPlayer);
+                            let selfLive3 = 0,
+                                selfFour = 0;
+                            for (let d of selfDetail.details) {
+                                if (d.score >= 2000000 && d.score < 3000000) selfLive3++;
+                                else if (d.score >= 3000000 && d.score < 8000000) selfFour++;
+                            }
+                            if (selfLive3 >= 1) score += 800000;
+                            if (selfFour >= 1) score += 2000000;
+                            if (selfLive3 >= 2 || (selfLive3 >= 1 && selfFour >= 1)) score += 2200000;
+                            // 阴间：如果防守的同时能形成活四，更阴间
+                            let isLiveFour = false;
+                            for (let [dx, dy] of this.dirs) {
+                                let cnt = 1,
+                                    openLeft = 0,
+                                    openRight = 0;
+                                for (let step = 1; step < 5; step++) {
+                                    let nr = r + dx * step,
+                                        nc = c + dy * step;
+                                    if (nr < 0 || nr >= 15 || nc < 0 || nc >= 15) break;
+                                    if (tempBoard[nr][nc] === aiPlayer) cnt++;
+                                    else if (tempBoard[nr][nc] === 0) { openRight++; if (openRight >= 2) break; } else break;
+                                }
+                                for (let step = 1; step < 5; step++) {
+                                    let nr = r - dx * step,
+                                        nc = c - dy * step;
+                                    if (nr < 0 || nr >= 15 || nc < 0 || nc >= 15) break;
+                                    if (tempBoard[nr][nc] === aiPlayer) cnt++;
+                                    else if (tempBoard[nr][nc] === 0) { openLeft++; if (openLeft >= 2) break; } else break;
+                                }
+                                if (cnt === 4 && openLeft > 0 && openRight > 0) {
+                                    isLiveFour = true;
+                                    break;
+                                }
+                            }
+                            if (isLiveFour) score += 5000000;
+
+                            if (score > bestScore) {
+                                bestScore = score;
+                                bestMove = [r, c];
+                            }
+                        }
+                        if (bestMove) {
+                            this.bestMove = bestMove;
+                            if (typeof ghostMoves !== 'undefined') ghostMoves = [bestMove];
+                            return bestMove;
+                        }
+                    }
+
+                    // ★★★ 3. 对手活三强制防守（但选择有进攻潜力的点） ★★★
+                    const live3Endpoints = this.findOpponentLiveThreeEndpoints(board, opponent);
+                    if (live3Endpoints.size > 0) {
+                        let bestScore = -Infinity;
+                        let bestMove = null;
+                        for (let key of live3Endpoints) {
+                            let r = Math.floor(key / 15),
+                                c = key % 15;
+                            if (board[r][c] !== 0) continue;
+                            let atk = this.evaluatePoint(board, r, c, aiPlayer);
+                            let dfn = this.evaluatePoint(board, r, c, opponent);
+                            let score = atk * 0.3 + dfn * this.BLOCK_LIVE3_WEIGHT;
+                            // 同样奖励进攻潜力
+                            let tempBoard = board.map(row => [...row]);
+                            tempBoard[r][c] = aiPlayer;
+                            let selfDetail = this.evaluatePointDetail(tempBoard, r, c, aiPlayer);
+                            let selfLive3 = 0,
+                                selfFour = 0;
+                            for (let d of selfDetail.details) {
+                                if (d.score >= 2000000 && d.score < 3000000) selfLive3++;
+                                else if (d.score >= 3000000 && d.score < 8000000) selfFour++;
+                            }
+                            if (selfLive3 >= 1) score += 800000;
+                            if (selfFour >= 1) score += 2000000;
+                            if (selfLive3 >= 2 || (selfLive3 >= 1 && selfFour >= 1)) score += 2200000;
+                            // 活四奖励
+                            let isLiveFour = false;
+                            for (let [dx, dy] of this.dirs) {
+                                let cnt = 1,
+                                    openLeft = 0,
+                                    openRight = 0;
+                                for (let step = 1; step < 5; step++) {
+                                    let nr = r + dx * step,
+                                        nc = c + dy * step;
+                                    if (nr < 0 || nr >= 15 || nc < 0 || nc >= 15) break;
+                                    if (tempBoard[nr][nc] === aiPlayer) cnt++;
+                                    else if (tempBoard[nr][nc] === 0) { openRight++; if (openRight >= 2) break; } else break;
+                                }
+                                for (let step = 1; step < 5; step++) {
+                                    let nr = r - dx * step,
+                                        nc = c - dy * step;
+                                    if (nr < 0 || nr >= 15 || nc < 0 || nc >= 15) break;
+                                    if (tempBoard[nr][nc] === aiPlayer) cnt++;
+                                    else if (tempBoard[nr][nc] === 0) { openLeft++; if (openLeft >= 2) break; } else break;
+                                }
+                                if (cnt === 4 && openLeft > 0 && openRight > 0) {
+                                    isLiveFour = true;
+                                    break;
+                                }
+                            }
+                            if (isLiveFour) score += 5000000;
+
+                            if (score > bestScore) {
+                                bestScore = score;
+                                bestMove = [r, c];
+                            }
+                        }
+                        if (bestMove) {
+                            this.bestMove = bestMove;
+                            if (typeof ghostMoves !== 'undefined') ghostMoves = [bestMove];
+                            return bestMove;
+                        }
+                    }
+
+                    // ★★★ 4. 常规评估（攻守平衡，偏向防守） ★★★
+                    let candidates = [];
+                    if (searchSpace.length === 0) return null;
+                    for (let [r, c] of searchSpace) {
+                        let atk = this.evaluatePoint(board, r, c, aiPlayer);
+                        let dfn = this.evaluatePoint(board, r, c, opponent);
+                        let detail = this.evaluatePointDetail(board, r, c, aiPlayer);
+                        let live3Count = 0,
+                            fourCount = 0;
+                        for (let d of detail.details) {
+                            if (d.score >= 2000000 && d.score < 3000000) live3Count++;
+                            else if (d.score >= 3000000 && d.score < 8000000) fourCount++;
+                        }
+                        let comboScore = 0;
+                        if (live3Count >= 2) comboScore = 2200000;
+                        if (live3Count >= 1 && fourCount >= 1) comboScore = Math.max(comboScore, 1200000);
+                        let score = atk * this.ATTACK_WEIGHT + dfn * this.DEFENSE_WEIGHT + comboScore;
+                        if (dfn >= 3000000 && dfn < 8000000) score += 100000;
+                        if (dfn >= 8000000) score += 200000;
+                        // 额外奖励：如果该点能同时防守对手的活三/冲四，并自己形成活三/冲四，加高分
+                        let tempBoard = board.map(row => [...row]);
+                        tempBoard[r][c] = aiPlayer;
+                        let opponentThreat = this.evaluatePoint(board, r, c, opponent);
+                        if (opponentThreat >= 2000000) score += 300000;
+                        if (opponentThreat >= 3000000) score += 600000;
+                        let selfDetail2 = this.evaluatePointDetail(tempBoard, r, c, aiPlayer);
+                        let selfLive3_2 = 0,
+                            selfFour_2 = 0;
+                        for (let d of selfDetail2.details) {
+                            if (d.score >= 2000000 && d.score < 3000000) selfLive3_2++;
+                            else if (d.score >= 3000000 && d.score < 8000000) selfFour_2++;
+                        }
+                        if (selfLive3_2 >= 1) score += 500000;
+                        if (selfFour_2 >= 1) score += 1500000;
+                        if (selfLive3_2 >= 2 || (selfLive3_2 >= 1 && selfFour_2 >= 1)) score += 2000000;
+                        // 活四奖励
+                        let isLiveFour2 = false;
+                        for (let [dx, dy] of this.dirs) {
+                            let cnt = 1,
+                                openLeft = 0,
+                                openRight = 0;
+                            for (let step = 1; step < 5; step++) {
+                                let nr = r + dx * step,
+                                    nc = c + dy * step;
+                                if (nr < 0 || nr >= 15 || nc < 0 || nc >= 15) break;
+                                if (tempBoard[nr][nc] === aiPlayer) cnt++;
+                                else if (tempBoard[nr][nc] === 0) { openRight++; if (openRight >= 2) break; } else break;
+                            }
+                            for (let step = 1; step < 5; step++) {
+                                let nr = r - dx * step,
+                                    nc = c - dy * step;
+                                if (nr < 0 || nr >= 15 || nc < 0 || nc >= 15) break;
+                                if (tempBoard[nr][nc] === aiPlayer) cnt++;
+                                else if (tempBoard[nr][nc] === 0) { openLeft++; if (openLeft >= 2) break; } else break;
+                            }
+                            if (cnt === 4 && openLeft > 0 && openRight > 0) {
+                                isLiveFour2 = true;
+                                break;
+                            }
+                        }
+                        if (isLiveFour2) score += 4000000;
+
+                        candidates.push([
+                            [r, c], score
+                        ]);
+                    }
+
+                    candidates.sort((a, b) => b[1] - a[1]);
+                    candidates = candidates.slice(0, this.rootCandidates);
+
+                    if (candidates.length === 0) {
+                        for (let [r, c] of searchSpace) {
+                            candidates.push([
+                                [r, c], 0
+                            ]);
+                        }
+                        candidates = candidates.slice(0, Math.min(20, candidates.length));
+                    }
+
+                    this.totalCandidates = candidates.length;
+                    this.progress = 0;
+                    let bestScore = -Infinity;
+                    let bestMove = candidates[0] ? candidates[0][0] : [7, 7];
+
+                    for (let [
+                            [r, c], _
+                        ] of candidates) {
+                        this.progress++;
+                        board[r][c] = aiPlayer;
+                        if (this.checkWin(board, r, c, aiPlayer)) {
+                            board[r][c] = 0;
+                            this.bestMove = [r, c];
+                            return [r, c];
+                        }
+                        let score = this.dfs(board, this.maxDepth - 1, -Infinity, Infinity, false, aiPlayer, opponent);
+                        board[r][c] = 0;
+                        if (score > bestScore) {
+                            bestScore = score;
+                            bestMove = [r, c];
+                        }
+                    }
+
+                    if (!bestMove || board[bestMove[0]] === undefined || board[bestMove[0]][bestMove[1]] !== 0) {
+                        for (let r = 0; r < 15; r++)
+                            for (let c = 0; c < 15; c++) {
+                                if (board[r][c] === 0) {
+                                    bestMove = [r, c];
+                                    break;
+                                }
+                            }
+                        if (bestMove && board[bestMove[0]] && board[bestMove[0]][bestMove[1]] !== 0) {
+                            bestMove = [7, 7];
+                        }
+                    }
+
+                    this.bestMove = bestMove;
+                    if (typeof ghostMoves !== 'undefined') {
+                        ghostMoves = [bestMove];
+                    }
+                    return bestMove;
+                } catch (err) {
+                    console.warn('AI getMove error:', err);
+                    for (let r = 0; r < 15; r++)
+                        for (let c = 0; c < 15; c++) {
+                            if (board[r][c] === 0) {
+                                this.bestMove = [r, c];
+                                return [r, c];
+                            }
+                        }
+                    return null;
+                }
+            }
+        }
+
+        // ============================================================
+        // 3. 游戏状态管理（包含完整平局判定）
+        // ============================================================
+        const SIZE = 15;
+        const canvas = document.getElementById('canvas');
+        const ctx = canvas.getContext('2d');
+        const statusEl = document.getElementById('status');
+        const undoBtn = document.getElementById('undoBtn');
+        const undoCountEl = document.getElementById('undoCount');
+        const menuOverlay = document.getElementById('menuOverlay');
+        const menuGrid = document.getElementById('menuGrid');
+        const startBtn = document.getElementById('startBtn');
+        const watchBtn = document.getElementById('watchBtn');
+        const exitWatchBtn = document.getElementById('exitWatchBtn');
+        const selfStatusText = document.getElementById('selfStatusText');
+        const spGames = document.getElementById('spGames');
+        const spBlack = document.getElementById('spBlack');
+        const spWhite = document.getElementById('spWhite');
+        const spDraw = document.getElementById('spDraw');
+        const spStatusText = document.getElementById('spStatusText');
+        const gameContainer = document.getElementById('gameContainer');
+        const winnerOverlay = document.getElementById('winnerOverlay');
+        const winnerText = document.getElementById('winnerText');
+        const menuSub = document.getElementById('menuSub');
+        const difficultyBadge = document.getElementById('difficultyBadge');
+        const hellBadge = document.getElementById('hellBadge');
+        const randomColorBtn = document.getElementById('randomColorBtn');
+        const randDots = document.getElementById('randDots');
+
+        let board = [],
+            history = [],
+            currentPlayer = 1,
+            gameOver = false;
+        let undoRemain = 3,
+            isAIThinking = false,
+            hasMoved = false,
+            difficulty = 1,
+            playerColor = 1;
+        let cellSize = 0,
+            padding = 0,
+            currentMode = 'menu',
+            isWatching = false;
+        let winnerTimer = null,
+            winnerShown = false,
+            winnerLock = false;
+        let ghostMoves = [];
+        let selfPlayRunning = false;
+        let selfPlayGames = 0,
+            selfPlayBlack = 0,
+            selfPlayWhite = 0,
+            selfPlayDraw = 0;
+
+        let watchBoard = [],
+            watchHistory = [],
+            watchMoveCount = 0,
+            watchWinner = null,
+            watchRunning = false;
+        let watchInterval = null;
+
+        const difficultyNames = ['🌱 新手', '📖 普通', '⚔️ 困难', '🔥 地狱'];
+
+        // ---- 随机模式状态 ----
+        let randomMode = false;
+
+        // ---- 加载动画 ----
+        setTimeout(() => document.getElementById('loadingScreen').classList.add('hidden'), 1500);
+
+        // ---- 随机按钮：仅切换模式 ----
+        randomColorBtn.addEventListener('click', function() {
+            if (randomSpinActive) return;
+            randomMode = !randomMode;
+            const btn = this;
+
+            if (randomMode) {
+                btn.classList.add('active-mode');
+                menuSub.textContent = '🎲 随机模式已开启 · 选好难度后点击「开始对局」';
+                menuSub.className = 'menu-sub rand-mode';
+                startBtn.classList.add('rand-mode-btn');
+                playDing(880, 0.2);
+                randDots.textContent = '✨';
+                setTimeout(() => {
+                    if (randomMode) randDots.textContent = '';
+                }, 600);
+            } else {
+                btn.classList.remove('active-mode');
+                menuSub.textContent = '选择难度 · AI已就绪';
+                menuSub.className = 'menu-sub';
+                startBtn.classList.remove('rand-mode-btn');
+                randDots.textContent = '';
+                playDing(660, 0.15);
+            }
+        });
+
+        // ---- 菜单选择 ----
+        menuGrid.addEventListener('click', function(e) {
+            let btn = e.target.closest('.menu-btn');
+            if (!btn) return;
+            playDing(660, 0.15);
+            document.querySelectorAll('.menu-btn').forEach(b => b.classList.remove('selected', 'hell-selected'));
+            btn.classList.add('selected');
+            if (parseInt(btn.dataset.level) === 3) btn.classList.add('hell-selected');
+            difficulty = parseInt(btn.dataset.level);
+            if (randomMode) {
+                menuSub.textContent = '🎲 随机模式已开启 · 已选 ' + difficultyNames[difficulty] + ' · 点击开始';
+                menuSub.className = 'menu-sub rand-mode';
+            } else {
+                menuSub.textContent = '已选 ' + difficultyNames[difficulty] + ' · 点击开始';
+                setTimeout(() => {
+                    if (menuSub.textContent.includes('已选') && !randomMode) {
+                        menuSub.textContent = '选择难度 · AI已就绪';
+                        menuSub.className = 'menu-sub';
+                    }
+                }, 2000);
+            }
+        });
+
+        // ---- 棋盘初始化 ----
+        function initBoard() {
+            board = Array.from({ length: SIZE }, () => Array(SIZE).fill(0));
+            history = [];
+            currentPlayer = 1;
+            gameOver = false;
+            hasMoved = false;
+            undoRemain = 3;
+            ghostMoves = [];
+            winnerOverlay.classList.remove('show');
+            if (winnerTimer) { clearTimeout(winnerTimer);
+                winnerTimer = null; }
+            winnerShown = false;
+            winnerLock = false;
+            resizeCanvas();
+            updateUI();
+        }
+
+        function isValid(r, c) { return r >= 0 && r < SIZE && c >= 0 && c < SIZE && board[r][c] === 0; }
+
+        function checkWinGlobal(r, c, p) {
+            if (board[r][c] !== p) return false;
+            const dirs = [
+                [1, 0],
+                [0, 1],
+                [1, 1],
+                [1, -1]
+            ];
+            for (let [dx, dy] of dirs) {
+                let cnt = 1;
+                for (let step = 1; step < 5; step++) {
+                    let nr = r + dx * step,
+                        nc = c + dy * step;
+                    if (nr >= 0 && nr < SIZE && nc >= 0 && nc < SIZE && board[nr][nc] === p) cnt++;
+                    else break;
+                }
+                for (let step = 1; step < 5; step++) {
+                    let nr = r - dx * step,
+                        nc = c - dy * step;
+                    if (nr >= 0 && nr < SIZE && nc >= 0 && nc < SIZE && board[nr][nc] === p) cnt++;
+                    else break;
+                }
+                if (cnt >= 5) return true;
+            }
+            return false;
+        }
+
+        // ★★★ 平局检测函数 ★★★
+        function isBoardFull() {
+            for (let r = 0; r < SIZE; r++) {
+                for (let c = 0; c < SIZE; c++) {
+                    if (board[r][c] === 0) return false;
+                }
+            }
+            return true;
+        }
+
+        function showWinner(color, text) {
+            if (winnerLock || winnerShown) return;
+            winnerLock = true;
+            winnerShown = true;
+            if (isWatching) {
+                statusEl.innerHTML = '👁️ ' + text;
+                winnerLock = false;
+                return;
+            }
+            winnerText.textContent = text;
+            winnerOverlay.classList.add('show');
+            playWin();
+            if (winnerTimer) { clearTimeout(winnerTimer);
+                winnerTimer = null; }
+            winnerTimer = setTimeout(() => {
+                winnerOverlay.classList.remove('show');
+                winnerLock = false;
+                if (!isWatching) goToMenu(text);
+                winnerTimer = null;
+            }, 1500);
+        }
+
+        function goToMenu(text) {
+            if (winnerTimer) { clearTimeout(winnerTimer);
+                winnerTimer = null; }
+            winnerLock = false;
+            winnerShown = false;
+            currentMode = 'menu';
+            isWatching = false;
+            menuOverlay.classList.remove('hidden');
+            gameContainer.style.display = 'none';
+            exitWatchBtn.style.display = 'none';
+            undoBtn.style.display = 'flex';
+            winnerOverlay.classList.remove('show');
+            if (text) {
+                menuSub.textContent = text + ' · 选择难度继续挑战';
+                setTimeout(() => {
+                    if (!randomMode) {
+                        menuSub.textContent = '选择难度 · AI已就绪';
+                        menuSub.className = 'menu-sub';
+                    }
+                }, 3000);
+            }
+            if (watchInterval) { clearInterval(watchInterval);
+                watchInterval = null; }
+            selfPlayRunning = false;
+        }
+
+        function updateModeUI(mode) {
+            if (mode === 'menu') {
+                menuOverlay.classList.remove('hidden');
+                gameContainer.style.display = 'none';
+                exitWatchBtn.style.display = 'none';
+                undoBtn.style.display = 'flex';
+                isWatching = false;
+                winnerOverlay.classList.remove('show');
+            } else if (mode === 'playing') {
+                menuOverlay.classList.add('hidden');
+                gameContainer.style.display = 'block';
+                exitWatchBtn.style.display = 'none';
+                undoBtn.style.display = 'flex';
+                isWatching = false;
+                winnerOverlay.classList.remove('show');
+                difficultyBadge.textContent = difficultyNames[difficulty] || '普通';
+                hellBadge.style.display = difficulty === 3 ? 'inline' : 'none';
+                startBtn.className = difficulty === 3 ? 'start-btn hell-start' : 'start-btn';
+                startBtn.classList.remove('rand-mode-btn');
+            } else if (mode === 'watching') {
+                menuOverlay.classList.add('hidden');
+                gameContainer.style.display = 'block';
+                exitWatchBtn.style.display = 'flex';
+                undoBtn.style.display = 'none';
+                isWatching = true;
+                winnerShown = false;
+                winnerLock = false;
+                winnerOverlay.classList.remove('show');
+                difficultyBadge.textContent = '👁️ 观看模式';
+                hellBadge.style.display = 'none';
+            }
+        }
+
+        function updateUI() {
+            if (isWatching) {
+                statusEl.innerHTML = '👁️ 观看AI对战模式';
+                undoBtn.disabled = true;
+                return;
+            }
+            if (gameOver) {
+                undoBtn.disabled = true;
+                return;
+            }
+            if (isAIThinking) {
+                statusEl.innerHTML = '🤖 AI思考中...';
+                undoBtn.disabled = true;
+                return;
+            }
+            if (currentPlayer === playerColor) {
+                statusEl.innerHTML =
+                    `<span class="dot ${playerColor===1?'black':'white'}"></span> 你的回合 · ${playerColor===1?'黑棋':'白棋'}`;
+            } else {
+                const ap = playerColor === 1 ? 2 : 1;
+                statusEl.innerHTML = `<span class="dot ${ap===1?'black':'white'}"></span> AI思考中 ...`;
+            }
+            undoBtn.disabled = !(undoRemain > 0 && hasMoved && !gameOver && !isAIThinking && currentPlayer === playerColor);
+            undoCountEl.textContent = `(${undoRemain}次)`;
+        }
+
+        function resizeCanvas() {
+            const rect = canvas.getBoundingClientRect();
+            if (rect.width === 0) { setTimeout(resizeCanvas, 100); return; }
+            const size = Math.floor(rect.width);
+            canvas.width = size;
+            canvas.height = size;
+            drawBoard();
+        }
+
+        function drawBoard() {
+            const w = canvas.width,
+                h = canvas.height;
+            if (w === 0 || h === 0) return;
+            ctx.clearRect(0, 0, w, h);
+            ctx.fillStyle = '#d4a574';
+            ctx.fillRect(0, 0, w, h);
+            padding = w * 0.045;
+            cellSize = (w - padding * 2) / (SIZE - 1);
+            ctx.strokeStyle = '#3d2a1a';
+            ctx.lineWidth = 1.5;
+            for (let i = 0; i < SIZE; i++) {
+                let pos = padding + i * cellSize;
+                ctx.beginPath();
+                ctx.moveTo(pos, padding);
+                ctx.lineTo(pos, padding + (SIZE - 1) * cellSize);
+                ctx.stroke();
+                ctx.beginPath();
+                ctx.moveTo(padding, pos);
+                ctx.lineTo(padding + (SIZE - 1) * cellSize, pos);
+                ctx.stroke();
+            }
+            ctx.fillStyle = '#3d2a1a';
+            for (let [r, c] of [
+                    [3, 3],
+                    [3, 11],
+                    [11, 3],
+                    [11, 11],
+                    [7, 7]
+                ]) {
+                let x = padding + c * cellSize,
+                    y = padding + r * cellSize;
+                ctx.beginPath();
+                ctx.arc(x, y, cellSize * 0.12, 0, Math.PI * 2);
+                ctx.fill();
+            }
+            for (let r = 0; r < SIZE; r++) {
+                for (let c = 0; c < SIZE; c++) {
+                    if (!board[r] || board[r][c] === 0) continue;
+                    let x = padding + c * cellSize,
+                        y = padding + r * cellSize,
+                        radius = cellSize * 0.42;
+                    if (board[r][c] === 1) {
+                        let grad = ctx.createRadialGradient(x - 3, y - 3, 2, x, y, radius);
+                        grad.addColorStop(0, '#555');
+                        grad.addColorStop(1, '#111');
+                        ctx.beginPath();
+                        ctx.arc(x, y, radius, 0, Math.PI * 2);
+                        ctx.fillStyle = grad;
+                        ctx.fill();
+                    } else {
+                        let grad = ctx.createRadialGradient(x - 3, y - 3, 2, x, y, radius);
+                        grad.addColorStop(0, '#fff');
+                        grad.addColorStop(1, '#ccc');
+                        ctx.beginPath();
+                        ctx.arc(x, y, radius, 0, Math.PI * 2);
+                        ctx.fillStyle = grad;
+                        ctx.fill();
+                    }
+                }
+            }
+            for (let [r, c] of ghostMoves) {
+                if (r === undefined || c === undefined) continue;
+                if (r < 0 || r >= SIZE || c < 0 || c >= SIZE) continue;
+                let x = padding + c * cellSize,
+                    y = padding + r * cellSize;
+                let radius = cellSize * 0.42;
+                ctx.globalAlpha = 0.35;
+                let grad = ctx.createRadialGradient(x - 2, y - 2, 2, x, y, radius);
+                grad.addColorStop(0, 'rgba(0,180,255,0.8)');
+                grad.addColorStop(0.7, 'rgba(0,100,255,0.3)');
+                grad.addColorStop(1, 'rgba(0,50,200,0.05)');
+                ctx.beginPath();
+                ctx.arc(x, y, radius, 0, Math.PI * 2);
+                ctx.fillStyle = grad;
+                ctx.fill();
+                ctx.strokeStyle = 'rgba(0,200,255,0.6)';
+                ctx.lineWidth = 2.5;
+                ctx.stroke();
+                ctx.globalAlpha = 1.0;
+            }
+            if (history.length > 0) {
+                let last = history[history.length - 1];
+                let x = padding + last.col * cellSize,
+                    y = padding + last.row * cellSize;
+                ctx.fillStyle = '#ff3333';
+                ctx.beginPath();
+                ctx.arc(x, y, cellSize * 0.1, 0, Math.PI * 2);
+                ctx.fill();
+            }
+        }
+
+        // ---- 执行随机选色 ----
+        let randomSpinActive = false;
+        let randomSpinTimer = null;
+
+        function performRandomSelect(callback) {
+            if (randomSpinActive) {
+                if (callback) setTimeout(callback, 100);
+                return;
+            }
+            randomSpinActive = true;
+            const btn = randomColorBtn;
+            btn.classList.add('spinning');
+            const radios = document.querySelectorAll('input[name="color"]');
+            let count = 0;
+            const totalTicks = 14 + Math.floor(Math.random() * 10);
+            const speeds = [60, 50, 40, 35, 30, 25, 20, 18, 16, 14, 12, 10, 8, 6, 5];
+            let finalColor = 1;
+
+            function doTick() {
+                if (count >= totalTicks) {
+                    finalColor = Math.random() < 0.5 ? 1 : 2;
+                    radios.forEach(r => {
+                        if (parseInt(r.value) === finalColor) r.checked = true;
+                    });
+                    btn.classList.remove('spinning');
+                    randDots.textContent = '';
+                    randomSpinActive = false;
+                    playDing(880, 0.25);
+                    const label = finalColor === 1 ? '⚫ 黑棋先手' : '⚪ 白棋后手';
+                    if (randomMode) {
+                        randomMode = false;
+                        randomColorBtn.classList.remove('active-mode');
+                        startBtn.classList.remove('rand-mode-btn');
+                        menuSub.textContent = '🎲 已随机到 ' + label + ' · 开始对局';
+                        menuSub.className = 'menu-sub rand-mode';
+                        setTimeout(() => {
+                            if (!randomMode) {
+                                menuSub.textContent = '选择难度 · AI已就绪';
+                                menuSub.className = 'menu-sub';
+                            }
+                        }, 2500);
+                    } else {
+                        menuSub.textContent = '🎲 随机到 ' + label + ' · 点击开始';
+                        setTimeout(() => {
+                            if (menuSub.textContent.includes('随机到') && !randomMode) {
+                                menuSub.textContent = '选择难度 · AI已就绪';
+                                menuSub.className = 'menu-sub';
+                            }
+                        }, 2500);
+                    }
+                    if (callback) {
+                        setTimeout(callback, 200);
+                    }
+                    return;
+                }
+                const currentVal = parseInt(document.querySelector('input[name="color"]:checked').value);
+                const nextVal = currentVal === 1 ? 2 : 1;
+                radios.forEach(r => {
+                    if (parseInt(r.value) === nextVal) r.checked = true;
+                });
+                const dots = '.'.repeat((count % 6) + 1);
+                randDots.textContent = dots;
+                playTick();
+                count++;
+                const speedIdx = Math.min(count, speeds.length - 1);
+                const delay = speeds[speedIdx] || 5;
+                randomSpinTimer = setTimeout(doTick, delay);
+            }
+            doTick();
+        }
+
+        // ---- AI走棋（包含平局检测） ----
+        function aiTurn() {
+            if (gameOver || isAIThinking || currentMode !== 'playing') return;
+            const aiPlayer = playerColor === 1 ? 2 : 1;
+            if (currentPlayer !== aiPlayer) return;
+            isAIThinking = true;
+            updateUI();
+
+            try {
+                const ai = new SelfLearningAI(difficulty);
+                const move = ai.getMove(board, history);
+                if (!move) {
+                    if (isBoardFull()) {
+                        gameOver = true;
+                        const drawText = '🤝 平局！';
+                        showWinner('draw', drawText);
+                        isAIThinking = false;
+                        updateUI();
+                        drawBoard();
+                        return;
+                    } else {
+                        console.warn('AI returned null move but board not full');
+                        isAIThinking = false;
+                        updateUI();
+                        return;
+                    }
+                }
+                const [r, c] = move;
+                if (!board[r] || board[r][c] !== 0) {
+                    let found = false;
+                    for (let rr = 0; rr < SIZE; rr++) {
+                        for (let cc = 0; cc < SIZE; cc++) {
+                            if (board[rr][cc] === 0) {
+                                board[rr][cc] = aiPlayer;
+                                history.push({ row: rr, col: cc, player: aiPlayer });
+                                hasMoved = true;
+                                found = true;
+                                if (checkWinGlobal(rr, cc, aiPlayer)) {
+                                    gameOver = true;
+                                    const wt = aiPlayer === 1 ? '⚫ 黑子胜利！' : '⚪ 白子胜利！';
+                                    showWinner(aiPlayer === 1 ? 'black' : 'white', wt);
+                                } else if (isBoardFull()) {
+                                    gameOver = true;
+                                    showWinner('draw', '🤝 平局！');
+                                }
+                                isAIThinking = false;
+                                updateUI();
+                                drawBoard();
+                                return;
+                            }
+                        }
+                    }
+                    if (!found) {
+                        if (isBoardFull()) {
+                            gameOver = true;
+                            showWinner('draw', '🤝 平局！');
+                        }
+                    }
+                    isAIThinking = false;
+                    updateUI();
+                    return;
+                }
+
+                board[r][c] = aiPlayer;
+                history.push({ row: r, col: c, player: aiPlayer });
+                hasMoved = true;
+                drawBoard();
+                playPlace();
+
+                if (checkWinGlobal(r, c, aiPlayer)) {
+                    gameOver = true;
+                    const wt = aiPlayer === 1 ? '⚫ 黑子胜利！' : '⚪ 白子胜利！';
+                    showWinner(aiPlayer === 1 ? 'black' : 'white', wt);
+                    isAIThinking = false;
+                    updateUI();
+                    drawBoard();
+                    return;
+                } else if (isBoardFull()) {
+                    gameOver = true;
+                    showWinner('draw', '🤝 平局！');
+                    isAIThinking = false;
+                    updateUI();
+                    drawBoard();
+                    return;
+                }
+
+                currentPlayer = playerColor;
+                isAIThinking = false;
+                updateUI();
+                drawBoard();
+            } catch (err) {
+                console.error('AI turn error:', err);
+                isAIThinking = false;
+                updateUI();
+            }
+        }
+
+        // ---- 玩家点击（包含平局检测） ----
+        canvas.addEventListener('click', function(e) {
+            if (isWatching || currentMode !== 'playing' || gameOver || isAIThinking || currentPlayer !== playerColor) return;
+            const rect = canvas.getBoundingClientRect();
+            const scaleX = canvas.width / rect.width,
+                scaleY = canvas.height / rect.height;
+            let cx = (e.clientX - rect.left) * scaleX,
+                cy = (e.clientY - rect.top) * scaleY;
+            let minDist = cellSize * 0.5,
+                target = null;
+            for (let r = 0; r < SIZE; r++) {
+                for (let c = 0; c < SIZE; c++) {
+                    let px = padding + c * cellSize,
+                        py = padding + r * cellSize;
+                    let dist = Math.hypot(cx - px, cy - py);
+                    if (dist < minDist) { minDist = dist;
+                        target = [r, c]; }
+                }
+            }
+            if (!target) return;
+            let [r, c] = target;
+            if (!isValid(r, c)) return;
+
+            board[r][c] = playerColor;
+            history.push({ row: r, col: c, player: playerColor });
+            hasMoved = true;
+            drawBoard();
+            playPlace();
+
+            if (checkWinGlobal(r, c, playerColor)) {
+                gameOver = true;
+                const wt = playerColor === 1 ? '⚫ 黑子胜利！' : '⚪ 白子胜利！';
+                showWinner(playerColor === 1 ? 'black' : 'white', wt);
+                updateUI();
+                drawBoard();
+                return;
+            } else if (isBoardFull()) {
+                gameOver = true;
+                showWinner('draw', '🤝 平局！');
+                updateUI();
+                drawBoard();
+                return;
+            }
+            currentPlayer = playerColor === 1 ? 2 : 1;
+            updateUI();
+            if (currentPlayer !== playerColor && !gameOver) {
+                setTimeout(aiTurn, 300);
+            }
+        });
+
+        // ---- 悔棋 ----
+        undoBtn.addEventListener('click', function() {
+            if (isWatching || currentMode !== 'playing' || gameOver || isAIThinking || undoRemain <= 0 || !hasMoved ||
+                currentPlayer !== playerColor) return;
+            for (let i = 0; i < 2; i++) {
+                if (history.length === 0) break;
+                let last = history.pop();
+                board[last.row][last.col] = 0;
+            }
+            hasMoved = history.length > 0;
+            currentPlayer = playerColor;
+            gameOver = false;
+            undoRemain--;
+            updateUI();
+            drawBoard();
+        });
+
+        // ---- 开始游戏 ----
+        function startGame() {
+            if (randomSpinActive) {
+                menuSub.textContent = '⏳ 随机选择中，请稍候...';
+                return;
+            }
+
+            if (randomMode) {
+                performRandomSelect(() => {
+                    const colorRadio = document.querySelector('input[name="color"]:checked');
+                    playerColor = parseInt(colorRadio.value);
+                    doStartGame();
+                });
+                return;
+            }
+
+            const colorRadio = document.querySelector('input[name="color"]:checked');
+            playerColor = parseInt(colorRadio.value);
+            doStartGame();
+        }
+
+        function doStartGame() {
+            winnerShown = false;
+            winnerLock = false;
+            if (winnerTimer) { clearTimeout(winnerTimer);
+                winnerTimer = null; }
+            winnerOverlay.classList.remove('show');
+            currentMode = 'playing';
+            isWatching = false;
+            selfPlayRunning = false;
+            if (watchInterval) { clearInterval(watchInterval);
+                watchInterval = null; }
+            updateModeUI('playing');
+            initBoard();
+            if (playerColor === 2) {
+                setTimeout(aiTurn, 500);
+            }
+        }
+
+        startBtn.addEventListener('click', startGame);
+
+        // ---- 观战AI对战 ----
+        async function selfPlayOneGame() {
+            const board2 = Array.from({ length: SIZE }, () => Array(SIZE).fill(0));
+            const history2 = [];
+            let player = 1;
+            let moves = 0;
+            const aiBlack = new SelfLearningAI(3);
+            const aiWhite = new SelfLearningAI(3);
+
+            while (moves < 225 && selfPlayRunning) {
+                const ai = player === 1 ? aiBlack : aiWhite;
+                let move;
+                try {
+                    move = ai.getMove(board2, history2);
+                } catch (e) {
+                    console.warn('SelfPlay AI error:', e);
+                    let found = false;
+                    for (let r = 0; r < SIZE; r++) {
+                        for (let c = 0; c < SIZE; c++) {
+                            if (board2[r][c] === 0) {
+                                move = [r, c];
+                                found = true;
+                                break;
+                            }
+                        }
+                        if (found) break;
+                    }
+                    if (!found) break;
+                }
+                if (!move) {
+                    let full = true;
+                    for (let r = 0; r < SIZE; r++) {
+                        for (let c = 0; c < SIZE; c++) {
+                            if (board2[r][c] === 0) { full = false; break; }
+                        }
+                        if (!full) break;
+                    }
+                    if (full) {
+                        selfPlayDraw++;
+                        selfPlayGames++;
+                        updateSelfStatus();
+                        return;
+                    }
+                    break;
+                }
+                const [r, c] = move;
+                if (board2[r][c] !== 0) {
+                    let found = false;
+                    for (let rr = 0; rr < SIZE; rr++) {
+                        for (let cc = 0; cc < SIZE; cc++) {
+                            if (board2[rr][cc] === 0) {
+                                board2[rr][cc] = player;
+                                history2.push({ row: rr, col: cc, player });
+                                moves++;
+                                found = true;
+                                break;
+                            }
+                        }
+                        if (found) break;
+                    }
+                    if (!found) break;
+                } else {
+                    board2[r][c] = player;
+                    history2.push({ row: r, col: c, player });
+                    moves++;
+                }
+
+                watchBoard = board2.map(row => [...row]);
+                watchHistory = history2.slice();
+                watchMoveCount = moves;
+                watchWinner = null;
+
+                if (checkWinGlobal(r, c, player)) {
+                    const winner = player === 1 ? 'black' : 'white';
+                    watchWinner = winner;
+                    if (winner === 'black') selfPlayBlack++;
+                    else selfPlayWhite++;
+                    selfPlayGames++;
+                    updateSelfStatus();
+                    return;
+                }
+                let full = true;
+                for (let rr = 0; rr < SIZE; rr++) {
+                    for (let cc = 0; cc < SIZE; cc++) {
+                        if (board2[rr][cc] === 0) { full = false; break; }
+                    }
+                    if (!full) break;
+                }
+                if (full) {
+                    selfPlayDraw++;
+                    selfPlayGames++;
+                    updateSelfStatus();
+                    return;
+                }
+
+                player = 3 - player;
+                await new Promise(r => setTimeout(r, 120));
+            }
+            watchRunning = false;
+        }
+
+        function updateSelfStatus() {
+            spGames.textContent = selfPlayGames;
+            spBlack.textContent = selfPlayBlack;
+            spWhite.textContent = selfPlayWhite;
+            spDraw.textContent = selfPlayDraw;
+            selfStatusText.textContent = `${selfPlayGames}局 | 黑${selfPlayBlack} 白${selfPlayWhite} 平${selfPlayDraw}`;
+        }
+
+        function startWatchLoop() {
+            if (watchInterval) { clearInterval(watchInterval);
+                watchInterval = null; }
+            watchInterval = setInterval(() => {
+                if (!isWatching) {
+                    clearInterval(watchInterval);
+                    watchInterval = null;
+                    return;
+                }
+                if (watchBoard && watchBoard.length) {
+                    board = watchBoard.map(row => [...row]);
+                    history = watchHistory.slice();
+                    if (watchWinner) {
+                        gameOver = true;
+                        const label = watchWinner === 'black' ? '⚫ 黑子胜利！' : '⚪ 白子胜利！';
+                        statusEl.innerHTML = '👁️ ' + label;
+                    } else {
+                        statusEl.innerHTML = `👁️ 第${watchMoveCount}步`;
+                    }
+                    drawBoard();
+                    updateUI();
+                }
+            }, 250);
+        }
+
+        watchBtn.addEventListener('click', function() {
+            playDing(660, 0.15);
+            if (randomSpinActive) {
+                menuSub.textContent = '⏳ 随机选择中，请稍候...';
+                return;
+            }
+            if (randomMode) {
+                randomMode = false;
+                randomColorBtn.classList.remove('active-mode');
+                startBtn.classList.remove('rand-mode-btn');
+                menuSub.textContent = '选择难度 · AI已就绪';
+                menuSub.className = 'menu-sub';
+                randDots.textContent = '';
+            }
+            currentMode = 'watching';
+            isWatching = true;
+            updateModeUI('watching');
+
+            watchBoard = [];
+            watchHistory = [];
+            watchMoveCount = 0;
+            watchWinner = null;
+
+            if (!selfPlayRunning) {
+                selfPlayRunning = true;
+                selfPlayOneGame().then(() => {
+                    selfPlayRunning = false;
+                    watchRunning = false;
+                });
+            }
+            startWatchLoop();
+        });
+
+        exitWatchBtn.addEventListener('click', function() {
+            playDing(660, 0.15);
+            selfPlayRunning = false;
+            isWatching = false;
+            currentMode = 'menu';
+            updateModeUI('menu');
+            watchBoard = [];
+            watchHistory = [];
+            watchWinner = null;
+            if (watchInterval) { clearInterval(watchInterval);
+                watchInterval = null; }
+        });
+
+        // ---- 初始化 ----
+        initBoard();
+        updateModeUI('menu');
+        window.addEventListener('resize', resizeCanvas);
+        document.getElementById('loadingScreen').classList.add('hidden');
+
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'r' || e.key === 'R') {
+                if (!randomSpinActive) randomColorBtn.click();
+            }
+        });
+
+        console.log('✅ 五子棋 · 阴间防守反击版 已加载（平局功能已内置）');
+        console.log('📌 棋盘下满时自动判定平局，并显示🤝平局。');
+    </script>
+</body>
+</html>
